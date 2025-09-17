@@ -1,2 +1,3 @@
 smolagents
 google-generativeai
+python-dotenv
