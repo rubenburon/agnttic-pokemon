@@ -1,56 +1,61 @@
 import os
-
 from dotenv import load_dotenv
-
 from smolagents import (
     CodeAgent,
+    OpenAIServerModel,
     ToolCallingAgent,
+    ToolCollection,
     DuckDuckGoSearchTool, 
     InferenceClientModel,
     GoogleSearchTool,
     VisitWebpageTool, 
     tool,
     LiteLLMModel,
+    MCPClient
 )
+from mcp import StdioServerParameters
 
-load_dotenv()
-#langfuse = Langfuse()
+def build_agents():
+    #"deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    #deepseek-ai/DeepSeek-R1-0528
+    model = OpenAIServerModel(model_id="gpt-4o")
+    #model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct") #Qwen/Qwen2.5-Coder-32B-Instruct")
+    server_parameters = StdioServerParameters(
+    command="uvx",
+    args=["--quiet", "pubmedmcp@0.1.3"],
+    env={"UV_PYTHON": "3.12", **os.environ},
+    )
 
-# from opentelemetry.sdk.trace import TracerProvider
+    try:
+        print
+        mcp_client = MCPClient(server_parameters)
+        print("MCPClient initialized successfully.")
+        tools = mcp_client.get_tools()
+        print(f"Retrieved {len(tools)} tools from MCPClient.")
 
-# from openinference.instrumentation.smolagents import SmolagentsInstrumentor
-# from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-# from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        agent = CodeAgent(
+            tools=tools,
+            model=model, 
+            #additional_authorized_imports=["time","pandas","json","numpy","markdownify","requests","re","openpyxl","beautifulsoup4"],
+            planning_interval=3,
+            max_steps=10,
+            add_base_tools=True)
+        
+        result = agent.run("What are the recent therapeutic approaches for Alzheimer's disease?")
 
-# trace_provider = TracerProvider()
-# trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
+        # Process the result as needed
+        print(f"Agent response: {result}")
+    except Exception as e:
+        print(f"Failed to initialize MCPClient: {e}")
+    finally:
+        mcp_client.disconnect()
+  
+  
 
-# SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
+    return result
 
-
-def create_agent():
-    model = LiteLLMModel(model_id="gemini/gemini-2.0-flash-exp",
-                     api_key=os.getenv("GEMINI_API_KEY"))
-
-    # with ToolCollection.from_mcp(server_parameters, trust_remote_code=True) as tool_collection:
-    agent = CodeAgent(
-        tools=[
-            #*tool_collection.tools,
-        ],
-        model=model, 
-        additional_authorized_imports=["time","pandas","json","numpy"],
-      #  step_callbacks=[load_images],
-        planning_interval=3,
-        max_steps=10,
-        add_base_tools=True)
-    return agent
 
 
 if __name__ == "__main__":
     load_dotenv()
-    agent = create_agent()
-    try:    
-        output = agent.run("What's the current weather in Granada?")
-    except Exception as e:
-        print(f"Error running agent: {e}")
-        output = f"Error running agent: {e}"
+    build_agents()
