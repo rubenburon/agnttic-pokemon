@@ -3,6 +3,7 @@ smolagents[toolkit]
 smolagents[telemetry]
 smolagents[gradio]
 smolagents[mcp]
+gradio
 dotenv
 pillow
 openpyxl
@@ -10,3 +11,5 @@ pandas
 numpy
 certifi
 uv
+langfuse
+openinference-instrumentation-smolagents

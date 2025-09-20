@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 # langfuse
 from langfuse import Langfuse
 from langfuse import observe
+from langfuse import get_client
 
 
 from opentelemetry.sdk.trace import TracerProvider
@@ -23,10 +24,8 @@ from openinference.instrumentation.smolagents import SmolagentsInstrumentor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-trace_provider = TracerProvider()
-trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
 
-SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
+
 
 # Importar la herramienta para leer excel:
 from tools.excelTool import (
@@ -51,13 +50,13 @@ def create_agent():
     # Configuración del agente.
     # Se pueden usar varios modelos y se cargan de manera diferente:
     # para usar Gemini:
-    model = LiteLLMModel(model_id="gemini/gemini-2.0-flash-exp",
-                     api_key=os.getenv("GEMINI_API_KEY"))
+    # model = LiteLLMModel(model_id="gemini/gemini-2.0-flash-exp",
+    #                  api_key=os.getenv("GEMINI_API_KEY"))
     # para usar algún modelo de OpenAI (pon la API_KEY en el archivo .env)
     # Acuérdate de poner también el import correspondiente de OpenAIServerModel
     # model = OpenAIServerModel(model_id="gpt-4o")
     # para usar algún modelo del hub de Huggin Face y usar su Api de inferencia Serverless
-    # model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
+    model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
 
     
     agent = CodeAgent(
@@ -100,6 +99,17 @@ if __name__ == "__main__":
     try:    
         # cambiamos el user prompt para pedirle que lea un archivo de excel.
         user_prompt = "I want to get in Excel file format the most well-known Pokemons with a description and their type. I want this specific format of columns: Name, Description, Type."
+        langfuse = get_client()
+        # Verify connection
+        if langfuse.auth_check():
+            print("Langfuse client is authenticated and ready!")
+        else:
+            print("Authentication failed. Please check your credentials and host.")
+            
+        trace_provider = TracerProvider()
+        trace_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
+
+        SmolagentsInstrumentor().instrument(tracer_provider=trace_provider)
         run_agent(agent, user_prompt)
     except Exception as e:
         print(f"Error running agent: {e}")
